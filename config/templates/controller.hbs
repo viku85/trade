@@ -1,0 +1,9 @@
+import { Request, Response } from 'express';
+import {{pascalCase name}}Service from './{{name}}.service';
+
+class {{pascalCase name}}Controller {
+  private readonly service = new {{pascalCase name}}Service();
+
+}
+
+export default {{pascalCase name}}Controller;

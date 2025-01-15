@@ -1,0 +1,23 @@
+{
+
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "prettier.requireConfig": true,
+    "prettier.configPath": ".prettierrc.json",
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+    "eslint.alwaysShowStatus": true,
+    "eslint.format.enable": true,
+    "eslint.enable": true,
+    "eslint.options": {
+      "ignorePath": ".eslintignore"
+    },
+    "eslint.validate": ["typescript"],
+    "eslint.workingDirectories": [
+      {
+        "directory": "./",
+        "changeProcessCWD": true
+      }
+  }
+  

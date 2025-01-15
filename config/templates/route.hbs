@@ -1,0 +1,9 @@
+import { Router } from 'express';
+import {{pascalCase name}}Controller from './{{name}}.controller';
+
+const router = Router();
+const controller = new {{pascalCase name}}Controller();
+
+router.get('/', (req, res) => {});
+
+export default router;
