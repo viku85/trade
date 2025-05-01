@@ -8,6 +8,25 @@ generator client {
   output = "./node_modules/@prisma/client"
 }
 
+model Rule {
+  id          Int            @id @default(autoincrement())
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  type        String         // e.g., 'static', 'api'
+  condition   Json           // JSON to store rule conditions
+  user        User           @relation(fields: [userId], references: [id])
+  userId      Int
+  RulePurchase RulePurchase[]
+}
+
+model RulePurchase {
+  id        Int      @id @default(autoincrement())
+  rule      Rule     @relation(fields: [ruleId], references: [id])
+  ruleId    Int
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
+  purchaseId Int
+}
+
 model User {
   id        Int        @id @default(autoincrement())
   createdAt DateTime   @default(now())
@@ -15,6 +34,7 @@ model User {
   email     String     @unique
   name      String?
   purchases Purchase[]
+    RulePurchase RulePurchase[]
   sales     Sale[]
 }
 

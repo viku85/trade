@@ -3,19 +3,29 @@ import serverless from "serverless-http";
 import dotenv from "dotenv";
 import healthRoutes from "./modules/health/health.route";
 import tradeRoutes from "./modules/trade/trade.route";
+import { initializeRealTimeTrading } from "./real-time-trade.initializer"; // Import the initializer
 
 dotenv.config();
 
-const app = express();
-app.use(express.json());
+// Create an async function to bootstrap the application
+async function bootstrap() {
+  // Initialize real-time trading components
+  await initializeRealTimeTrading();
 
-// Load Module Routes
-app.use("/api/health", healthRoutes);
-app.use("/api/trade", tradeRoutes);
+  const app = express();
+  app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.status(200).json({ message: "Welcome to the Serverless Trading API" });
-});
+  // Load Module Routes
+  app.use("/api/health", healthRoutes);
+  app.use("/api/trade", tradeRoutes);
+
+  app.get("/", (req, res) => {
+    res.status(200).json({ message: "Welcome to the Serverless Trading API" });
+  });
+
+  return app;
+}
+
 
 // Error Handling Middleware
 app.use((err: any, req: any, res: any, next: any) => {
@@ -23,4 +33,8 @@ app.use((err: any, req: any, res: any, next: any) => {
   res.status(500).json({ error: "Internal Server Error" });
 });
 
-export const handler = serverless(app);
+// Export the handler that calls the bootstrap function
+export const handler = async (event: any, context: any) => {
+  const app = await bootstrap();
+  return serverless(app)(event, context);
+};

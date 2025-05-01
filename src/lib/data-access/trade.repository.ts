@@ -1,4 +1,4 @@
-import { PrismaClient, Purchase, Sale } from '@prisma/client';
+import { PrismaClient, Purchase, Sale, RulePurchase } from '@prisma/client';
 
 const prisma = new PrismaClient();
 interface CreatePurchaseParams {
@@ -10,6 +10,13 @@ interface CreateSaleParams {
   amount: number;
   asset: string;
   userId: number;
+}
+
+interface CreateRulePurchaseParams {
+  userId: number;
+  ruleId: number;
+  purchaseId?:number;
+  purchase: any;
 }
 
 export class TradeRepository {
@@ -43,4 +50,21 @@ export class TradeRepository {
   async getSalesByUserId(userId: number): Promise<Sale[]> {
     return await prisma.sale.findMany({ where: { userId } });
   }
+  async createRulePurchase({ userId, ruleId, purchase}: CreateRulePurchaseParams): Promise<RulePurchase> {
+    let purchaseId = null;
+    if(purchase.orderId){
+      const createdPurchase = await this.createPurchase({amount: purchase.quantity, asset: purchase.symbol, userId});
+      purchaseId = createdPurchase.id
+    }
+    return prisma.rulePurchase.create({
+      data: {
+        userId,
+        ruleId,
+        purchaseId: purchaseId,
+        condition: JSON.stringify(purchase)
+      },
+    });
+  }
+
+
 }

@@ -1,4 +1,4 @@
-import { ITradeApi, OrderDetails, OrderResult } from './ITradeApi';
+import { ITradeApi, Order, OrderResult } from '../ITradeApi';
 import { FyersAPI } from 'fyers-api-v2';
 
 export class FyersTradeApi implements ITradeApi {
@@ -26,7 +26,7 @@ export class FyersTradeApi implements ITradeApi {
     this.fyers.setAccessToken(this.accessToken);
   }
 
-  async placeOrder(orderDetails: OrderDetails): Promise<OrderResult> {
+  async placeOrder(orderDetails: Order): Promise<OrderResult> {
     try {
       const orderPayload = {
         symbol: orderDetails.symbol,
@@ -93,5 +93,18 @@ export class FyersTradeApi implements ITradeApi {
     }
   }
 
+    async getUserBalance(userId: string): Promise<number> {
+    try {
+      const response = await this.fyers.funds();
+      if (response && response.s === 'ok' && response.fund_limit) {
+        // Assuming the available balance is in a field like 'cash' or 'available_balance'
+        return response.fund_limit[0].cash;
+      }
+      return 0; // Default to 0 if balance not found or API error
+    } catch (error) {
+      console.error('Error fetching user balance:', error);
+      return 0;
+    }
+  }
   // Add other methods as needed for Fyers API interactions (e.g., getting quotes, positions)
 }
