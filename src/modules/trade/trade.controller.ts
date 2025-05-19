@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import TradeService from "./trade.service";
 
 class TradeController {
-  private readonly service = new TradeService();
+   private readonly service = new TradeService();
 
   public async getTrades(req: Request, res: Response): Promise<void> {
     try {
@@ -14,4 +14,4 @@ class TradeController {
   }
 }
 
-export default TradeController;
+export {TradeController};

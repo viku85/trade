@@ -9,3 +9,8 @@ export interface GenericRule<T> {
 }
 
 export interface Rule extends GenericRule<any> {}
+
+export interface AllRuleResult {
+  success: boolean;
+  failedRule?: Rule;
+}
