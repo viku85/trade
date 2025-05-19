@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import {Prisma} from '../../prisma/prisma/client';
 
 export const SaleModel = Prisma.validator<Prisma.SaleDefaultArgs>()({
   select: {
@@ -7,6 +7,7 @@ export const SaleModel = Prisma.validator<Prisma.SaleDefaultArgs>()({
     updatedAt: true,
     amount: true,
     asset: true,
+    userId: true, // Add userId here
   },
 });
 

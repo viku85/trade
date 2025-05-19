@@ -1,9 +1,14 @@
-import { Prisma } from '@prisma/client';
+import {Prisma} from '../../prisma/prisma/client';
 
-export interface Purchase {
-  id: number;
-  createdAt: Date;
-  updatedAt: Date;
-  amount: number;
-  asset: string;
-}
+export const PurchaseModel = Prisma.validator<Prisma.PurchaseDefaultArgs>()({
+  select: {
+    id: true,
+    createdAt: true,
+    updatedAt: true,
+    amount: true,
+    asset: true,
+    userId: true,
+  },
+});
+
+export type Purchase = Prisma.PurchaseGetPayload<typeof PurchaseModel>;
