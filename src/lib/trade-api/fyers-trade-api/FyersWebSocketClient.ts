@@ -2,16 +2,19 @@ import WebSocket from 'ws';
 
 interface FyersWebSocketConfig {
   accessToken: string;
-  symbolList: string[]; // Symbols to subscribe to
+  symbolList: string[];
+  wsUrl?: string;
 }
 
 class FyersWebSocketClient {
   private ws: WebSocket | null = null;
   private config: FyersWebSocketConfig;
-  private readonly fyersWebSocketUrl = 'wss://api.fyers.in/ws/'; // Replace with actual Fyers WS URL if different
+  private readonly fyersWebSocketUrl: string;
+  private marketDataCallback?: (data: any) => void;
 
   constructor(config: FyersWebSocketConfig) {
     this.config = config;
+    this.fyersWebSocketUrl = config.wsUrl || 'wss://api.fyers.in/ws/';
     this.connect();
   }
 
@@ -25,60 +28,60 @@ class FyersWebSocketClient {
   }
 
   private handleOpen(): void {
-    console.log('Fyers WebSocket connection opened.');
+    console.log('WebSocket connection opened.');
     this.authenticate();
   }
 
   private authenticate(): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       const authMessage = {
-        // Consult Fyers API docs for the exact authentication message format
-        // This is a placeholder example
         type: 'auth',
         token: this.config.accessToken,
       };
       this.ws.send(JSON.stringify(authMessage));
-      console.log('Sent authentication message to Fyers WebSocket.');
+      console.log('Sent authentication message to WebSocket.');
     }
   }
 
-  private subscribeToSymbols(): void {
+  public subscribeToSymbols(symbols: string[]): void {
+    this.config.symbolList = symbols;
+    this.subscribeToSymbolsInternal();
+  }
+
+  private subscribeToSymbolsInternal(): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const subscribeMessage = {
-        // Consult Fyers API docs for the exact subscription message format
-        // This is a placeholder example
-        type: 'subscribe',
-        symbols: this.config.symbolList.join(','), // Assuming comma-separated symbols
+      const payload = {
+        a: 'subscribe',
+        o: {symbols: this.config.symbolList.join(',')},
       };
-      this.ws.send(JSON.stringify(subscribeMessage));
-      console.log(`Sent subscription message for symbols: ${this.config.symbolList.join(', ')}`);
+      this.ws.send(JSON.stringify(payload));
     }
   }
 
-  private handleMessage(data: WebSocket.Data): void {
-    console.log('Received message from Fyers WebSocket:', data.toString());
-    // Parse the message and process market data
-    // You will need to implement logic here to handle different message types
-    // (e.g., price updates, trade data) and potentially pass them to your rule engine.
+  public onMarketData(callback: (data: any) => void): void {
+    this.marketDataCallback = callback;
+  }
+
+  private handleMessage(msg: string): void {
+    try {
+      const data = JSON.parse(msg);
+      if (this.marketDataCallback) {
+        this.marketDataCallback(data);
+      }
+      console.log('Received message from WebSocket:', msg);
+    } catch (e) {
+      console.error('Received message from WebSocket:', msg);
+      // Do not call callback on parse error
+    }
   }
 
   private handleError(error: Error): void {
-    console.error('Fyers WebSocket error:', error);
-    // Implement error handling and potential reconnection logic
+    console.error('WebSocket error:', error);
   }
 
   private handleClose(code: number, reason: string): void {
-    console.log(`Fyers WebSocket connection closed. Code: ${code}, Reason: ${reason}`);
-    // Implement reconnection logic if needed
+    console.log('WebSocket connection closed:', code, reason);
   }
-
-  public disconnect(): void {
-    if (this.ws) {
-      this.ws.close();
-    }
-  }
-
-  // Add other methods as needed, e.g., to unsubscribe from symbols
 }
 
 export default FyersWebSocketClient;

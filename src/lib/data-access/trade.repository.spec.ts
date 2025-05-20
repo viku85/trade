@@ -25,8 +25,7 @@ describe('TradeRepository', () => {
 
   beforeEach(() => {
     mockPrismaClient = new PrismaClient() as jest.Mocked<PrismaClient>;
-    tradeRepository = new TradeRepository();
-    (tradeRepository as any).prisma = mockPrismaClient; // Assign the mocked PrismaClient instance to the repository
+    tradeRepository = new TradeRepository(mockPrismaClient); // Pass mock client to repository
   });
 
   afterEach(() => {
@@ -143,7 +142,6 @@ describe('TradeRepository', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         purchaseId: 1,
-        condition: '{"orderId":"order-123","quantity":10,"symbol":"AAPL"}',
       };
       const mockPurchase = {
         id: 1,
@@ -164,7 +162,6 @@ describe('TradeRepository', () => {
           userId: 1,
           ruleId: 10,
           purchaseId: 1,
-          condition: '{"orderId":"order-123","quantity":10,"symbol":"AAPL"}',
         },
       });
       expect(mockPrismaClient.purchase.create).toHaveBeenCalledWith({

@@ -1,5 +1,6 @@
 import {RuleEngine} from './rule-engine';
-import {StaticCondition, ApiCondition, Rule, Condition} from './types';
+import {StaticRuleEvaluator} from './rule-evaluator/static-rule/static-rule-evaluator';
+import {ApiRuleEvaluator} from './rule-evaluator/api-rule/api-rule-evaluator';
 import axios from 'axios';
 import {AllRuleResult} from './types/Rule';
 
@@ -14,94 +15,98 @@ describe('RuleEngine', () => {
   });
 
   it('should evaluate a rule with a single static condition that evaluates to true', async () => {
-    const staticCondition: StaticCondition = {
-      conditionId: '1',
-      description: 'Test',
-      expression: '1 === 1',
-    };
-    const rule: Rule = {
+    const staticCondition = new StaticRuleEvaluator('1', 'Test', '1 === 1');
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule1',
       description: 'Rule 1',
+      userId: 'user1',
       conditions: [staticCondition],
       conditionOperator: 'AND',
     };
-    const result: AllRuleResult = await ruleEngine.evaluateAll(rule);
+    ruleEngine.addRule(rule);
+    const result: AllRuleResult = await ruleEngine.evaluateAll({});
     expect(result.success).toBe(true);
   });
 
   it('should evaluate a rule with a single static condition that evaluates to false', async () => {
-    const staticCondition: StaticCondition = {
-      conditionId: '2',
-      description: 'Test',
-      expression: '1 === 2',
-    };
-    const rule: Rule = {
+    const staticCondition = new StaticRuleEvaluator('2', 'Test', '1 === 2');
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule2',
       description: 'Rule 2',
+      userId: 'user1',
       conditions: [staticCondition],
       conditionOperator: 'AND',
     };
-    const result: AllRuleResult = await ruleEngine.evaluateAll(rule);
+    ruleEngine.addRule(rule);
+    const result: AllRuleResult = await ruleEngine.evaluateAll({});
     expect(result.success).toBe(false);
   });
 
   it('should evaluate a rule with multiple static conditions (AND - all true)', async () => {
-    const staticConditions: StaticCondition[] = [
-      {conditionId: '3', description: 'Test', expression: '1 === 1'},
-      {conditionId: '4', description: 'Test', expression: '2 === 2'},
+    const staticConditions = [
+      new StaticRuleEvaluator('3', 'Test', '1 === 1'),
+      new StaticRuleEvaluator('4', 'Test', '2 === 2'),
     ];
-    const rule: Rule = {
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule3',
       description: 'Rule 3',
+      userId: 'user1',
       conditions: staticConditions,
       conditionOperator: 'AND',
     };
-    const result: AllRuleResult = await ruleEngine.evaluateAll(rule);
+    ruleEngine.addRule(rule);
+    const result: AllRuleResult = await ruleEngine.evaluateAll({});
     expect(result.success).toBe(true);
   });
 
   it('should evaluate a rule with multiple static conditions (AND - one false)', async () => {
-    const staticConditions: StaticCondition[] = [
-      {conditionId: '5', description: 'Test', expression: '1 === 1'},
-      {conditionId: '6', description: 'Test', expression: '2 === 3'},
+    const staticConditions = [
+      new StaticRuleEvaluator('5', 'Test', '1 === 1'),
+      new StaticRuleEvaluator('6', 'Test', '2 === 3'),
     ];
-    const rule: Rule = {
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule4',
       description: 'Rule 4',
+      userId: 'user1',
       conditions: staticConditions,
       conditionOperator: 'AND',
     };
-    const result: AllRuleResult = await ruleEngine.evaluateAll(rule);
+    ruleEngine.addRule(rule);
+    const result: AllRuleResult = await ruleEngine.evaluateAll({});
     expect(result.success).toBe(false);
   });
 
   it('should evaluate a rule with multiple static conditions (OR - one true)', async () => {
-    const staticConditions: StaticCondition[] = [
-      {conditionId: '7', description: 'Test', expression: '1 === 2'},
-      {conditionId: '8', description: 'Test', expression: '2 === 2'},
+    const staticConditions = [
+      new StaticRuleEvaluator('7', 'Test', '1 === 2'),
+      new StaticRuleEvaluator('8', 'Test', '2 === 2'),
     ];
-    const rule: Rule = {
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule5',
       description: 'Rule 5',
+      userId: 'user1',
       conditions: staticConditions,
       conditionOperator: 'OR',
     };
-    const result: AllRuleResult = await ruleEngine.evaluateAll(rule);
+    ruleEngine.addRule(rule);
+    const result: AllRuleResult = await ruleEngine.evaluateAll({});
     expect(result.success).toBe(true);
   });
 
   it('should evaluate a rule with multiple static conditions (OR - all false)', async () => {
-    const staticConditions: StaticCondition[] = [
-      {conditionId: '9', description: 'Test', expression: '1 === 2'},
-      {conditionId: '10', description: 'Test', expression: '2 === 3'},
+    const staticConditions = [
+      new StaticRuleEvaluator('9', 'Test', '1 === 2'),
+      new StaticRuleEvaluator('10', 'Test', '2 === 3'),
     ];
-    const rule: Rule = {
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule6',
       description: 'Rule 6',
+      userId: 'user1',
       conditions: staticConditions,
       conditionOperator: 'OR',
     };
-    const result: AllRuleResult = await ruleEngine.evaluateAll(rule);
+    ruleEngine.addRule(rule);
+    const result: AllRuleResult = await ruleEngine.evaluateAll({});
     expect(result.success).toBe(false);
   });
 
@@ -114,21 +119,23 @@ describe('RuleEngine', () => {
       config: {url: 'http://api.example.com', headers: {}},
     };
     mockedAxios.request.mockResolvedValue(mockResponse);
-    const apiCondition: ApiCondition = {
-      conditionId: '11',
-      description: 'API Test',
-      url: 'http://api.example.example.com',
-      method: 'GET',
-      expression: 'response.data.value > 5',
-    };
+    const apiCondition = new ApiRuleEvaluator(
+      '11',
+      'API Test',
+      'http://api.example.com',
+      'GET',
+      'response.data.value > 5'
+    );
 
-    const rule: Rule = {
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule7',
       description: 'Rule 7',
+      userId: 'user1',
       conditions: [apiCondition],
       conditionOperator: 'AND',
     };
-    const result: AllRuleResult = await ruleEngine.evaluateAll(rule);
+    ruleEngine.addRule(rule);
+    const result: AllRuleResult = await ruleEngine.evaluateAll({});
     expect(result.success).toBe(true);
   });
 
@@ -148,29 +155,31 @@ describe('RuleEngine', () => {
         headers: {},
         config: {url: 'http://api.example.com/2', headers: {}},
       });
-    const apiConditions: ApiCondition[] = [
-      {
-        conditionId: '12',
-        description: 'API Test 1',
-        url: 'http://api.example.com/1',
-        method: 'GET',
-        expression: 'response.data.value > 5',
-      },
-      {
-        conditionId: '13',
-        description: 'API Test 2',
-        url: 'http://api.example.com/2',
-        method: 'GET',
-        expression: 'response.data.value > 15',
-      },
+    const apiConditions = [
+      new ApiRuleEvaluator(
+        '12',
+        'API Test 1',
+        'http://api.example.com/1',
+        'GET',
+        'response.data.value > 5'
+      ),
+      new ApiRuleEvaluator(
+        '13',
+        'API Test 2',
+        'http://api.example.com/2',
+        'GET',
+        'response.data.value > 15'
+      ),
     ];
-    const rule: Rule = {
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule8',
       description: 'Rule 8',
+      userId: 'user1',
       conditions: apiConditions,
       conditionOperator: 'AND',
     };
-    const result: AllRuleResult = await ruleEngine.evaluateAll(rule);
+    ruleEngine.addRule(rule);
+    const result: AllRuleResult = await ruleEngine.evaluateAll({});
     expect(result.success).toBe(true);
   });
 
@@ -190,29 +199,31 @@ describe('RuleEngine', () => {
         headers: {},
         config: {url: 'http://api.example.com/2', headers: {}},
       });
-    const apiConditions: ApiCondition[] = [
-      {
-        conditionId: '14',
-        description: 'API Test 1',
-        url: 'http://api.example.com/1',
-        method: 'GET',
-        expression: 'response.data.value > 5',
-      },
-      {
-        conditionId: '15',
-        description: 'API Test 2',
-        url: 'http://api.example.com/2',
-        method: 'GET',
-        expression: 'response.data.value > 15',
-      },
+    const apiConditions = [
+      new ApiRuleEvaluator(
+        '14',
+        'API Test 1',
+        'http://api.example.com/1',
+        'GET',
+        'response.data.value > 5'
+      ),
+      new ApiRuleEvaluator(
+        '15',
+        'API Test 2',
+        'http://api.example.com/2',
+        'GET',
+        'response.data.value > 15'
+      ),
     ];
-    const rule: Rule = {
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule9',
       description: 'Rule 9',
+      userId: 'user1',
       conditions: apiConditions,
       conditionOperator: 'OR',
     };
-    const result: AllRuleResult = await ruleEngine.evaluateAll(rule);
+    ruleEngine.addRule(rule);
+    const result: AllRuleResult = await ruleEngine.evaluateAll({});
     expect(result.success).toBe(true);
   });
 
@@ -224,43 +235,47 @@ describe('RuleEngine', () => {
       headers: {},
       config: {url: 'http://api.example.com', headers: {}},
     });
-    const conditions: Condition[] = [
-      {
-        conditionId: '16',
-        description: 'API Test',
-        url: 'http://api.example.com',
-        method: 'GET',
-        expression: 'response.data.value > 5',
-      },
-      {conditionId: '17', description: 'Static Test', expression: '2 === 2'},
+    const conditions = [
+      new ApiRuleEvaluator(
+        '16',
+        'API Test',
+        'http://api.example.com',
+        'GET',
+        'response.data.value > 5'
+      ),
+      new StaticRuleEvaluator('17', 'Static Test', '2 === 2'),
     ];
-    const rule: Rule = {
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule10',
       description: 'Rule 10',
+      userId: 'user1',
       conditions: conditions,
       conditionOperator: 'AND',
     };
-    const result: AllRuleResult = await ruleEngine.evaluateAll(rule);
+    ruleEngine.addRule(rule);
+    const result: AllRuleResult = await ruleEngine.evaluateAll({});
     expect(result.success).toBe(true);
   });
 
   it('should handle errors during API condition evaluation', async () => {
     mockedAxios.request.mockRejectedValue(new Error('API call failed'));
-    const apiCondition: ApiCondition = {
-      conditionId: '18',
-      description: 'API Test',
-      url: 'http://api.example.com',
-      method: 'GET',
-      expression: 'response.data.value > 5',
-    };
+    const apiCondition = new ApiRuleEvaluator(
+      '18',
+      'API Test',
+      'http://api.example.com',
+      'GET',
+      'response.data.value > 5'
+    );
 
-    const rule: Rule = {
+    const rule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule11',
       description: 'Rule 11',
+      userId: 'user1',
       conditions: [apiCondition],
       conditionOperator: 'AND',
     };
-    await expect(ruleEngine.evaluateAll(rule)).rejects.toThrow('Error evaluating API rule');
+    ruleEngine.addRule(rule);
+    await expect(ruleEngine.evaluateAll({})).rejects.toThrow('Error evaluating API rule');
   });
 
   it('should evaluate a rule with nested conditions (using AND and OR)', async () => {
@@ -272,30 +287,23 @@ describe('RuleEngine', () => {
       config: {url: 'http://api.example.com', headers: {}},
     });
 
-    const staticCondition1: StaticCondition = {
-      conditionId: '19',
-      description: 'Static Test 1',
-      expression: '2 === 2',
-    };
-    const apiCondition1: ApiCondition = {
-      conditionId: '20',
-      description: 'API Test 1',
-      url: 'http://api.example.com',
-      method: 'GET',
-      expression: 'response.data.value > 5',
-    };
+    const staticCondition1 = new StaticRuleEvaluator('19', 'Static Test 1', '2 === 2');
+    const apiCondition1 = new ApiRuleEvaluator(
+      '20',
+      'API Test 1',
+      'http://api.example.com',
+      'GET',
+      'response.data.value > 5'
+    );
 
-    const staticCondition2: StaticCondition = {
-      conditionId: '21',
-      description: 'Static Test 2',
-      expression: '1 === 2',
-    };
+    const staticCondition2 = new StaticRuleEvaluator('21', 'Static Test 2', '1 === 2');
 
-    const conditions: Condition[] = [staticCondition1, apiCondition1, staticCondition2];
+    const conditions = [staticCondition1, apiCondition1, staticCondition2];
 
-    const orRule: Rule = {
+    const orRule: Parameters<RuleEngine['addRule']>[0] = {
       id: 'rule13',
       description: 'Rule 13 (OR)',
+      userId: 'user1',
       conditions: conditions,
       conditionOperator: 'OR',
     };

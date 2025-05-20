@@ -5,6 +5,7 @@ const config: Config = {
   testEnvironment: 'node',
   testMatch: ['**/?(*.)+(spec|test).[tj]s?(x)'],
   moduleFileExtensions: ['ts', 'js', 'json', 'node'],
+  watchPathIgnorePatterns: ['<rootDir>/dist/'],
 };
 
 export default config;

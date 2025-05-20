@@ -1,4 +1,4 @@
-import { PrismaClient, Rule, User } from '@prisma/client';
+import {PrismaClient} from '@prisma/client';
 
 export class UserRepository {
   private prisma: PrismaClient;
@@ -7,7 +7,7 @@ export class UserRepository {
     this.prisma = new PrismaClient();
   }
 
-  async getUserRules(userId: string): Promise<Rule[]> {
+  async getUserRules(userId: string) {
     try {
       const rules = await this.prisma.rule.findMany({
         where: {
@@ -23,7 +23,7 @@ export class UserRepository {
     }
   }
 
-  async getAllUsersWithRules(): Promise<User[]> {
+  async getAllUsersWithRules() {
     try {
       const users = await this.prisma.user.findMany({
         include: {

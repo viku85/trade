@@ -1,5 +1,4 @@
 import {PrismaClient, Purchase, RulePurchase, Sale} from '../../../prisma/prisma/client';
-const prisma = new PrismaClient();
 
 interface CreatePurchaseParams {
   amount: number;
@@ -20,8 +19,12 @@ interface CreateRulePurchaseParams {
 }
 
 export class TradeRepository {
+  private prisma: PrismaClient;
+  constructor(prismaClient?: PrismaClient) {
+    this.prisma = prismaClient || new PrismaClient();
+  }
   async createPurchase({amount, asset, userId}: CreatePurchaseParams): Promise<Purchase> {
-    return prisma.purchase.create({
+    return this.prisma.purchase.create({
       data: {
         amount,
         asset,
@@ -31,7 +34,7 @@ export class TradeRepository {
   }
 
   async createSale({amount, asset, userId}: CreateSaleParams): Promise<Sale> {
-    return prisma.sale.create({
+    return this.prisma.sale.create({
       data: {
         amount,
         asset,
@@ -41,14 +44,14 @@ export class TradeRepository {
   }
 
   async getPurchase(id: number): Promise<Purchase | null> {
-    return await prisma.purchase.findUnique({where: {id}});
+    return await this.prisma.purchase.findUnique({where: {id}});
   }
 
   async getPurchasesByUserId(userId: number): Promise<Purchase[]> {
-    return await prisma.purchase.findMany({where: {userId}});
+    return await this.prisma.purchase.findMany({where: {userId}});
   }
   async getSalesByUserId(userId: number): Promise<Sale[]> {
-    return await prisma.sale.findMany({where: {userId}});
+    return await this.prisma.sale.findMany({where: {userId}});
   }
   async createRulePurchase({
     userId,
@@ -69,7 +72,7 @@ export class TradeRepository {
     const purchaseId = createdPurchase.id;
 
     try {
-      return await prisma.rulePurchase.create({
+      return await this.prisma.rulePurchase.create({
         data: {
           userId,
           ruleId,

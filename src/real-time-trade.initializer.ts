@@ -1,12 +1,11 @@
-import { UserRepository } from './modules/user/user.repository'; // Adjust path if needed
-import { RuleCacheService } from './modules/rule/rule-cache.service'; // Adjust path if needed
-import { FyersWebSocketClient } from './lib/fyers/fyers-websocket-client'; // Adjust path if needed
-import { RuleEngine } from './lib/rule-engine/rule-engine'; // Adjust path if needed
-import { ITradeApi } from './lib/trade-api/ITradeApi'; // Adjust path if needed
-import { TradeService } from './modules/trade/trade.service'; // Adjust path if needed
-import { TradeRepository } from './lib/data-access/trade.repository'; // Adjust path if needed
-import { TradeRuleEvaluatorService } from './modules/trade/trade-rule-evaluator.service'; // Adjust path if needed
-
+import {UserRepository} from './modules/user/user.repository'; // Adjust path if needed
+import {RuleCacheService} from './modules/rule/rule-cache.service'; // Adjust path if needed
+import FyersWebSocketClient from './lib/trade-api/fyers-trade-api/FyersWebSocketClient';
+import {RuleEngine} from './lib/rule-engine/rule-engine'; // Adjust path if needed
+import {ITradeApi} from './lib/trade-api/ITradeApi'; // Adjust path if needed
+import TradeService from './modules/trade/trade.service'; // Adjust path if needed
+import {TradeRepository} from './lib/data-access/trade.repository'; // Adjust path if needed
+import {TradeRuleEvaluatorService} from './modules/trade/trade-rule-evaluator.service'; // Adjust path if needed
 
 export async function initializeRealTimeTrading() {
   // Initialize Repositories
@@ -22,12 +21,22 @@ export async function initializeRealTimeTrading() {
   // Build Rule Cache
   await ruleCacheService.buildCache();
 
-  // Initialize WebSocket Client
-  const fyersWebSocketClient = new FyersWebSocketClient(); // Initialize WebSocket Client
-
-  // Get Symbols from Cache and Subscribe
+  // Get Symbols from Cache
   const symbolsToSubscribe = ruleCacheService.getAllSymbolsWithRules();
-  fyersWebSocketClient.subscribeToSymbols(symbolsToSubscribe); // Assuming FyersWebSocketClient has this method
+
+  // Initialize WebSocket Client
+  const fyersWebSocketClient = new FyersWebSocketClient({
+    accessToken: process.env.FYERS_ACCESS_TOKEN || '',
+    symbolList: symbolsToSubscribe,
+  }); // Initialize WebSocket Client
+
+  // Subscribe to symbols using the public method for testability
+  fyersWebSocketClient.subscribeToSymbols(symbolsToSubscribe);
+
+  // Set up Market Data Flow
+  fyersWebSocketClient.onMarketData((marketData: any) => {
+    tradeRuleEvaluatorService.evaluateTradeRulesForUser(marketData);
+  });
 
   // Initialize Trade Rule Evaluator
   const tradeRuleEvaluatorService = new TradeRuleEvaluatorService(
@@ -38,12 +47,6 @@ export async function initializeRealTimeTrading() {
     tradeService,
     tradeRepository
   );
-
-  // Set up Market Data Flow
-  // Assuming FyersWebSocketClient emits market data events
-  fyersWebSocketClient.onMarketData((marketData: any) => {
-    tradeRuleEvaluatorService.evaluateTradeRulesForUser(marketData);
-  });
 
   console.log('Real-time trading initialization complete.');
 
@@ -56,6 +59,6 @@ export async function initializeRealTimeTrading() {
     tradeApi,
     tradeService,
     tradeRepository,
-    tradeRuleEvaluatorService
+    tradeRuleEvaluatorService,
   };
 }

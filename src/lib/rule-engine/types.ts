@@ -19,6 +19,7 @@ export interface Rule {
   description: string;
   conditions: Condition[];
   conditionOperator: 'AND' | 'OR';
+  userId: string;
 }
 
 export interface RuleEngine {

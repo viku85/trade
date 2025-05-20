@@ -1,505 +1,303 @@
-import { RuleCacheService } from './rule-cache.service';
-import { Rule } from '../../lib/rule-engine/types/Rule';
-import { UserRepository } from '../user/user.repository';
-import { User } from '../user/user.entity';
+import {RuleCacheService} from './rule-cache.service';
+import {UserRepository} from '../user/user.repository';
+import {StaticRuleEvaluator} from '../../lib/rule-engine/rule-evaluator/static-rule/static-rule-evaluator';
+import {Rule} from '../../lib/rule-engine/types/Rule';
 
 const mockUserRepository = {
-    getAllUsersWithRules: jest.fn(),
-} as unknown as UserRepository
+  getAllUsersWithRules: jest.fn(),
+} as unknown as UserRepository;
 
 describe('RuleCacheService', () => {
-    let ruleCacheService: RuleCacheService;
-    const testUserId = 'test-user-id';
+  let ruleCacheService: RuleCacheService;
+  const testUserId = 'test-user-id';
 
-    beforeEach(() => {
-      ruleCacheService = new RuleCacheService(mockUserRepository);
-      // Clear the cache before each test by creating a new one
-      (ruleCacheService as any).symbolRuleUserMap = new Map<string, { userId: string; rule: Rule }[]>();
-      mockUserRepository.getAllUsersWithRules.mockResolvedValue([]); // Default to no users
-    });
-  
-    it('should be defined', () => {
-        expect(ruleCacheService).toBeDefined();
-    });
+  beforeEach(() => {
+    ruleCacheService = new RuleCacheService(mockUserRepository);
+    (ruleCacheService as any).symbolRuleUserMap = new Map<string, {userId: string; rule: Rule}[]>();
+    mockUserRepository.getAllUsersWithRules = jest.fn().mockResolvedValue([]);
+  });
 
-    describe('addRule', () => {
-        it('should add a new rule to the cache', async () => {
-            const rule: Rule = {
-                id: 'rule1',
+  it('should be defined', () => {
+    expect(ruleCacheService).toBeDefined();
+  });
+
+  describe('addRule', () => {
+    it('should add a new rule to the cache', async () => {
+      const rule: Rule = {
+        id: 'rule1',
         type: 'static',
-        condition: { symbol: 'AAPL' },
         description: 'Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
-            const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
-            expect(rulesForSymbol).toHaveLength(1);
-            expect(rulesForSymbol[0].rule).toEqual(rule);
-            expect(rulesForSymbol[0].userId).toEqual(testUserId);
-        });
+      await ruleCacheService.addRule(testUserId, rule);
+      const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
+      expect(rulesForSymbol).toHaveLength(1);
+      expect(rulesForSymbol![0].rule).toEqual(rule);
+      expect(rulesForSymbol![0].userId).toEqual(testUserId);
+    });
 
-        it('should add multiple rules for the same symbol', async () => {
-            const rule1: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 1',
-            };
-            const rule2: Rule = {
-                id: 'rule2',
+    it('should add multiple rules for the same symbol', async () => {
+      const rule1: Rule = {
+        id: 'rule1',
         type: 'static',
-                condition:{symbol: 'AAPL'},
-                description: 'Test Rule 2',
-            };
-            await ruleCacheService.addRule(testUserId, rule1);
-            await ruleCacheService.addRule(testUserId, rule2);
-            const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
-            expect(rulesForSymbol).toHaveLength(2);
-            expect(rulesForSymbol).toEqual([
-                { userId: testUserId, rule: rule1 },
-                { userId: testUserId, rule: rule2 },
-            ]);
-        });
-
-        it('should add rules for different symbols', async () => {
-            const rule1: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 1',
-            };
-            const rule2: Rule = {
-                id: 'rule2',
-                type: 'static',
-                condition: { symbol: 'GOOG' },
-                description: 'Test Rule 2',
-            };
-            await ruleCacheService.addRule(testUserId, rule1);
-            await ruleCacheService.addRule(testUserId, rule2);
-
-            const rulesForAAPL = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
-            const rulesForGOOG = ruleCacheService.getRulesAndUsersForSymbol('GOOG');
-            expect(rulesForAAPL).toHaveLength(1);
-            expect(rulesForAAPL[0]).toEqual({ userId: testUserId, rule: rule1 });
-            expect(rulesForGOOG).toHaveLength(1);
-            expect(rulesForGOOG[0]).toEqual({ userId: testUserId, rule: rule2 });
-        });
-    });
-
-    describe('getRulesAndUsersForSymbol', () => {
-        it('should return rules for a specific symbol', async () => {
-            const rule1: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 1',
-            };
-            const rule2: Rule = {
-                id: 'rule2',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 2',
-            };
-            await ruleCacheService.addRule(testUserId, rule1);
-            await ruleCacheService.addRule(testUserId, rule2);
-            const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
-            expect(rulesForSymbol).toEqual([
-                { userId: testUserId, rule: rule1 },
-                { userId: testUserId, rule: rule2 },
-            ]);
-        });
-
-        it('should return undefined if no rules exist for the symbol', () => {
-            const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('NONEXISTENT');
-            expect(rulesForSymbol).toBeUndefined();
-        });
-    });
-
-    describe('getAllSymbolsWithRules', () => {
-        it('should return all rules from the cache', async () => {
-            const rule1: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 1',
-            };
-            const rule2: Rule = {
-                id: 'rule2',
-                type: 'static',
-                condition: { symbol: 'GOOG' },
-                description: 'Test Rule 2',
-            };
-            await ruleCacheService.addRule(testUserId, rule1);
-            await ruleCacheService.addRule(testUserId, rule2);
-            const allSymbols = ruleCacheService.getAllSymbolsWithRules();
-            // Order might not be guaranteed in a Map, so check for presence
-            expect(allSymbols).toHaveLength(2);
-            expect(allSymbols).toContain('AAPL');
-            expect(allSymbols).toContain('GOOG');
-        });
-
-        it('should return an empty array if the cache is empty', () => {
-            const allRules = ruleCacheService.getAllSymbolsWithRules();
-            expect(allRules).toEqual([]);
-        });
-    });
-
-    describe('deleteRule', () => {
-        it('should delete a rule from the cache by ID', async () => {
-            const rule1: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 1',
-            };
-            const rule2: Rule = {
-                id: 'rule2',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 2',
-            };
-            await ruleCacheService.addRule(testUserId, rule1);
-            await ruleCacheService.addRule(testUserId, rule2);
-
-            await ruleCacheService.deleteRule(testUserId, 'rule1');
-            const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
-            expect(rulesForSymbol).toHaveLength(1);
-            expect(rulesForSymbol).not.toContainEqual({ userId: testUserId, rule: rule1 });
-            expect(rulesForSymbol).toContainEqual({ userId: testUserId, rule: rule2 });
-        });
-
-        it('should do nothing if the rule ID does not exist', async () => {
-            const rule1: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 1',
-            };
-            await ruleCacheService.addRule(testUserId, rule1);
-
-            await ruleCacheService.deleteRule(testUserId, 'nonexistent-rule');
-            const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
-            expect(rulesForSymbol).toHaveLength(1);
-            expect(rulesForSymbol).toContainEqual({ userId: testUserId, rule: rule1 });
-        });
-
-        it('should remove the symbol entry if the last rule for a symbol is deleted', async () => {
-            const rule1: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition:{symbol: 'AAPL'},
-                description: 'Test Rule 1',
-            };
-            await ruleCacheService.addRule(testUserId, rule1);
-            await ruleCacheService.deleteRule(testUserId, 'rule1');
-            const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
-            expect(rulesForSymbol).toBeUndefined();
-            expect((ruleCacheService as any).symbolRuleUserMap.has('AAPL')).toBe(false);
-        });
-    });
-
-    describe('updateRule', () => {
-        it('should update an existing rule in the cache', async () => {
-            const rule1: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 1',
-            };
-            const updatedRule: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition:{symbol: 'AAPL'},
-                description: 'Updated Test Rule 1',
-            };
-            await ruleCacheService.addRule(testUserId, rule1);
-            await ruleCacheService.updateRule(testUserId, updatedRule);
-            const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
-            expect(rulesForSymbol).toHaveLength(1);
-            expect(rulesForSymbol[0]).toEqual({ userId: testUserId, rule: updatedRule });
-        });
-
-        it('should update a rule when its symbol changes', async () => {
-            const rule1: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 1',
-            };
-            const updatedRule: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition:{symbol: 'MSFT'},
-                description: 'Updated Test Rule 1',
-            };
-            await ruleCacheService.addRule(testUserId, rule1);
-            await ruleCacheService.updateRule(testUserId, updatedRule);
-
-            const rulesForAAPL = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
-            const rulesForMSFT = ruleCacheService.getRulesAndUsersForSymbol('MSFT');
-
-            expect(rulesForAAPL).toBeUndefined();
-            expect(rulesForMSFT).toHaveLength(1);
-            expect(rulesForMSFT[0]).toEqual({ userId: testUserId, rule: updatedRule });
-            expect((ruleCacheService as any).symbolRuleUserMap.has('AAPL')).toBe(false);
-        });
-
-
-        it('should do nothing if the rule ID to update does not exist', async () => {
-            const rule1: Rule = {
-                id: 'rule1',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Test Rule 1',
-            };
-            const updatedRule: Rule = {
-                id: 'nonexistent-rule',
-                type: 'static',
-                condition: { symbol: 'AAPL' },
-                description: 'Updated Test Rule',
-            };
-            await ruleCacheService.addRule(testUserId, rule1);
-            await ruleCacheService.updateRule(testUserId, updatedRule);
-            const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
-            expect(rulesForSymbol).toHaveLength(1);
-            expect(rulesForSymbol[0]).toEqual({ userId: testUserId, rule: rule1 }); // Rule should not have been updated
-        });
-    });
-});
-    });
-
-    it('should add rules for different symbols', () => {
-      const rule1: Rule = {
-        id: 'rule1',
-        name: 'Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        description: 'Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
       const rule2: Rule = {
         id: 'rule2',
-        name: 'Test Rule 2',
-        symbol: 'GOOG',
-        conditions: [],
-        action: { type: 'SELL', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 2',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond2', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
-      ruleCacheService.setRule(rule1);
-      ruleCacheService.setRule(rule2);
-      const rulesForAAPL = ruleCacheService.getRulesBySymbol('AAPL');
-      const rulesForGOOG = ruleCacheService.getRulesBySymbol('GOOG');
+      await ruleCacheService.addRule(testUserId, rule1);
+      await ruleCacheService.addRule(testUserId, rule2);
+      const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
+      expect(rulesForSymbol).toHaveLength(2);
+      expect(rulesForSymbol).toEqual([
+        {userId: testUserId, rule: rule1},
+        {userId: testUserId, rule: rule2},
+      ]);
+    });
+
+    it('should add rules for different symbols', async () => {
+      const rule1: Rule = {
+        id: 'rule1',
+        type: 'static',
+        description: 'Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
+      };
+      const rule2: Rule = {
+        id: 'rule2',
+        type: 'static',
+        description: 'Test Rule 2',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond2', 'GOOG static', "context.symbol === 'GOOG'")],
+        conditionOperator: 'AND',
+      };
+      await ruleCacheService.addRule(testUserId, rule1);
+      await ruleCacheService.addRule(testUserId, rule2);
+
+      const rulesForAAPL = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
+      const rulesForGOOG = ruleCacheService.getRulesAndUsersForSymbol('GOOG');
       expect(rulesForAAPL).toHaveLength(1);
-      expect(rulesForAAPL[0]).toEqual(rule1);
+      expect(rulesForAAPL![0]).toEqual({userId: testUserId, rule: rule1});
       expect(rulesForGOOG).toHaveLength(1);
-      expect(rulesForGOOG[0]).toEqual(rule2);
+      expect(rulesForGOOG![0]).toEqual({userId: testUserId, rule: rule2});
     });
   });
 
-  describe('getRulesBySymbol', () => {
-    it('should return rules for a specific symbol', () => {
+  describe('getRulesAndUsersForSymbol', () => {
+    it('should return rules for a specific symbol', async () => {
       const rule1: Rule = {
         id: 'rule1',
-        name: 'Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
       const rule2: Rule = {
         id: 'rule2',
-        name: 'Test Rule 2',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'SELL', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 2',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond2', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
-      ruleCacheService.setRule(rule1);
-      ruleCacheService.setRule(rule2);
-      const rulesForSymbol = ruleCacheService.getRulesBySymbol('AAPL');
-      expect(rulesForSymbol).toEqual([rule1, rule2]);
+      await ruleCacheService.addRule(testUserId, rule1);
+      await ruleCacheService.addRule(testUserId, rule2);
+      const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
+      expect(rulesForSymbol).toEqual([
+        {userId: testUserId, rule: rule1},
+        {userId: testUserId, rule: rule2},
+      ]);
     });
 
-    it('should return an empty array if no rules exist for the symbol', () => {
-      const rulesForSymbol = ruleCacheService.getRulesBySymbol('NONEXISTENT');
-      expect(rulesForSymbol).toEqual([]);
+    it('should return undefined if no rules exist for the symbol', () => {
+      const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('NONEXISTENT');
+      expect(rulesForSymbol).toBeUndefined();
     });
   });
 
-  describe('getAllRules', () => {
-    it('should return all rules from the cache', () => {
+  describe('getAllSymbolsWithRules', () => {
+    it('should return all rules from the cache', async () => {
       const rule1: Rule = {
         id: 'rule1',
-        name: 'Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
       const rule2: Rule = {
         id: 'rule2',
-        name: 'Test Rule 2',
-        symbol: 'GOOG',
-        conditions: [],
-        action: { type: 'SELL', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 2',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond2', 'GOOG static', "context.symbol === 'GOOG'")],
+        conditionOperator: 'AND',
       };
-      ruleCacheService.setRule(rule1);
-      ruleCacheService.setRule(rule2);
-      const allRules = ruleCacheService.getAllRules();
+      await ruleCacheService.addRule(testUserId, rule1);
+      await ruleCacheService.addRule(testUserId, rule2);
+      const allSymbols = ruleCacheService.getAllSymbolsWithRules();
       // Order might not be guaranteed in a Map, so check for presence
-      expect(allRules).toHaveLength(2);
-      expect(allRules).toContainEqual(rule1);
-      expect(allRules).toContainEqual(rule2);
+      expect(allSymbols).toHaveLength(2);
+      expect(allSymbols).toContain('AAPL');
+      expect(allSymbols).toContain('GOOG');
     });
 
     it('should return an empty array if the cache is empty', () => {
-      const allRules = ruleCacheService.getAllRules();
+      const allRules = ruleCacheService.getAllSymbolsWithRules();
       expect(allRules).toEqual([]);
     });
   });
 
   describe('deleteRule', () => {
-    it('should delete a rule from the cache by ID', () => {
+    it('should delete a rule from the cache by ID', async () => {
       const rule1: Rule = {
         id: 'rule1',
-        name: 'Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
       const rule2: Rule = {
         id: 'rule2',
-        name: 'Test Rule 2',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'SELL', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 2',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond2', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
-      ruleCacheService.setRule(rule1);
-      ruleCacheService.setRule(rule2);
+      await ruleCacheService.addRule(testUserId, rule1);
+      await ruleCacheService.addRule(testUserId, rule2);
 
-      ruleCacheService.deleteRule('rule1');
-      const rulesForSymbol = ruleCacheService.getRulesBySymbol('AAPL');
+      await ruleCacheService.deleteRule(testUserId, 'rule1');
+      const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
       expect(rulesForSymbol).toHaveLength(1);
-      expect(rulesForSymbol).not.toContainEqual(rule1);
-      expect(rulesForSymbol).toContainEqual(rule2);
+      expect(rulesForSymbol).not.toContainEqual({userId: testUserId, rule: rule1});
+      expect(rulesForSymbol).toContainEqual({userId: testUserId, rule: rule2});
     });
 
-    it('should do nothing if the rule ID does not exist', () => {
+    it('should do nothing if the rule ID does not exist', async () => {
       const rule1: Rule = {
         id: 'rule1',
-        name: 'Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
-      ruleCacheService.setRule(rule1);
+      await ruleCacheService.addRule(testUserId, rule1);
 
-      ruleCacheService.deleteRule('nonexistent-rule');
-      const rulesForSymbol = ruleCacheService.getRulesBySymbol('AAPL');
+      await ruleCacheService.deleteRule(testUserId, 'nonexistent-rule');
+      const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
       expect(rulesForSymbol).toHaveLength(1);
-      expect(rulesForSymbol).toContainEqual(rule1);
+      expect(rulesForSymbol).toContainEqual({userId: testUserId, rule: rule1});
     });
 
-    it('should remove the symbol entry if the last rule for a symbol is deleted', () => {
+    it('should remove the symbol entry if the last rule for a symbol is deleted', async () => {
       const rule1: Rule = {
         id: 'rule1',
-        name: 'Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
-      ruleCacheService.setRule(rule1);
-      ruleCacheService.deleteRule('rule1');
-      const rulesForSymbol = ruleCacheService.getRulesBySymbol('AAPL');
-      expect(rulesForSymbol).toEqual([]);
-      expect((ruleCacheService as any).rules.has('AAPL')).toBe(false);
+      await ruleCacheService.addRule(testUserId, rule1);
+      await ruleCacheService.deleteRule(testUserId, 'rule1');
+      const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
+      expect(rulesForSymbol).toBeUndefined();
+      expect((ruleCacheService as any).symbolRuleUserMap.has('AAPL')).toBe(false);
     });
   });
 
   describe('updateRule', () => {
-    it('should update an existing rule in the cache', () => {
+    it('should update an existing rule in the cache', async () => {
       const rule1: Rule = {
         id: 'rule1',
-        name: 'Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
       const updatedRule: Rule = {
         id: 'rule1',
-        name: 'Updated Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'SELL', parameters: {} },
-        isActive: false,
+        type: 'static',
+        description: 'Updated Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
-      ruleCacheService.setRule(rule1);
-      ruleCacheService.updateRule(updatedRule);
-      const rulesForSymbol = ruleCacheService.getRulesBySymbol('AAPL');
+      await ruleCacheService.addRule(testUserId, rule1);
+      await ruleCacheService.updateRule(testUserId, updatedRule);
+      const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
       expect(rulesForSymbol).toHaveLength(1);
-      expect(rulesForSymbol[0]).toEqual(updatedRule);
+      expect(rulesForSymbol![0]).toEqual({userId: testUserId, rule: updatedRule});
     });
 
-    it('should update a rule when its symbol changes', () => {
+    it('should update a rule when its symbol changes', async () => {
       const rule1: Rule = {
         id: 'rule1',
-        name: 'Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
       const updatedRule: Rule = {
         id: 'rule1',
-        name: 'Updated Test Rule 1',
-        symbol: 'MSFT', // Symbol changed
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Updated Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'MSFT static', "context.symbol === 'MSFT'")],
+        conditionOperator: 'AND',
       };
-      ruleCacheService.setRule(rule1);
-      ruleCacheService.updateRule(updatedRule);
+      await ruleCacheService.addRule(testUserId, rule1);
+      await ruleCacheService.updateRule(testUserId, updatedRule);
 
-      const rulesForAAPL = ruleCacheService.getRulesBySymbol('AAPL');
-      const rulesForMSFT = ruleCacheService.getRulesBySymbol('MSFT');
+      const rulesForAAPL = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
+      const rulesForMSFT = ruleCacheService.getRulesAndUsersForSymbol('MSFT');
 
-      expect(rulesForAAPL).toEqual([]);
+      expect(rulesForAAPL).toBeUndefined();
       expect(rulesForMSFT).toHaveLength(1);
-      expect(rulesForMSFT[0]).toEqual(updatedRule);
-      expect((ruleCacheService as any).rules.has('AAPL')).toBe(false);
+      expect(rulesForMSFT![0]).toEqual({userId: testUserId, rule: updatedRule});
+      expect((ruleCacheService as any).symbolRuleUserMap.has('AAPL')).toBe(false);
     });
 
-
-    it('should do nothing if the rule ID to update does not exist', () => {
+    it('should do nothing if the rule ID to update does not exist', async () => {
       const rule1: Rule = {
         id: 'rule1',
-        name: 'Test Rule 1',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'BUY', parameters: {} },
-        isActive: true,
+        type: 'static',
+        description: 'Test Rule 1',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
       const updatedRule: Rule = {
         id: 'nonexistent-rule',
-        name: 'Updated Test Rule',
-        symbol: 'AAPL',
-        conditions: [],
-        action: { type: 'SELL', parameters: {} },
-        isActive: false,
+        type: 'static',
+        description: 'Updated Test Rule',
+        userId: testUserId,
+        conditions: [new StaticRuleEvaluator('cond1', 'AAPL static', "context.symbol === 'AAPL'")],
+        conditionOperator: 'AND',
       };
-      ruleCacheService.setRule(rule1);
-      ruleCacheService.updateRule(updatedRule);
-      const rulesForSymbol = ruleCacheService.getRulesBySymbol('AAPL');
+      await ruleCacheService.addRule(testUserId, rule1);
+      await ruleCacheService.updateRule(testUserId, updatedRule);
+      const rulesForSymbol = ruleCacheService.getRulesAndUsersForSymbol('AAPL');
       expect(rulesForSymbol).toHaveLength(1);
-      expect(rulesForSymbol[0]).toEqual(rule1); // Rule should not have been updated
+      expect(rulesForSymbol![0]).toEqual({userId: testUserId, rule: rule1}); // Rule should not have been updated
     });
   });
 });

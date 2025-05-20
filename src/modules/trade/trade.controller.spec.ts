@@ -1,11 +1,11 @@
-import { Request, Response } from 'express';
-import { TradeController } from './trade.controller';
-import { TradeService } from './trade.service';
-import { CreateTradeDto } from './trade.types';
-import { validate } from 'class-validator'; // Assuming you use class-validator for validation
+import {Request, Response} from 'express';
+import {TradeController} from './trade.controller';
+import TradeService from './trade.service';
+import {validate} from 'class-validator';
 
-// Mock the TradeService
-jest.mock('./trade.service');
+jest.mock('class-validator', () => ({
+  validate: jest.fn(),
+}));
 
 describe('TradeController', () => {
   let tradeController: TradeController;
@@ -14,13 +14,17 @@ describe('TradeController', () => {
   let mockResponse: Partial<Response>;
 
   beforeEach(() => {
-    // Clear all mocks before each test
     jest.clearAllMocks();
 
-    // Create a new instance of the mocked TradeService
-    tradeService = new TradeService() as jest.Mocked<TradeService>;
-
-    // Create an instance of the TradeController with the mocked service
+    // Provide a mock ITradeApi for TradeService
+    const mockTradeApi = {
+      placeOrder: jest.fn(),
+      getTrades: jest.fn(),
+      cancelOrder: jest.fn(),
+      getOrderStatus: jest.fn(),
+      getUserBalance: jest.fn(),
+    };
+    tradeService = new TradeService(mockTradeApi) as jest.Mocked<TradeService>;
     tradeController = new TradeController(tradeService);
 
     // Initialize mock request and response objects
@@ -30,21 +34,27 @@ describe('TradeController', () => {
       json: jest.fn(),
       send: jest.fn(),
     };
+
+    // Manually mock all relevant TradeService methods
+    tradeService.createTrade = jest.fn();
+    tradeService.getTradeById = jest.fn();
+    tradeService.getTradeHistory = jest.fn();
   });
 
   describe('createTrade', () => {
     it('should call tradeService.createTrade and return 201 status on success', async () => {
-      const tradeDetails: CreateTradeDto = {
+      const tradeDetails = {
         symbol: 'AAPL',
         type: 'BUY',
         quantity: 10,
         price: 150,
         orderType: 'MARKET',
       };
-      const createdTrade = { id: '123', ...tradeDetails };
+      const createdTrade = {id: '123', ...tradeDetails};
 
       // Mock the service method to resolve with the created trade
-      tradeService.createTrade.mockResolvedValue(createdTrade);
+      (validate as jest.Mock).mockResolvedValue([]);
+      (tradeService.createTrade as jest.Mock).mockResolvedValue(createdTrade);
 
       // Set the request body
       mockRequest.body = tradeDetails;
@@ -60,7 +70,7 @@ describe('TradeController', () => {
 
     it('should return 400 status if validation fails', async () => {
       // Invalid trade details (missing required field)
-      const tradeDetails: Partial<CreateTradeDto> = {
+      const tradeDetails: Partial<typeof mockRequest.body> = {
         symbol: 'AAPL',
         type: 'BUY',
         quantity: 10,
@@ -72,7 +82,9 @@ describe('TradeController', () => {
       mockRequest.body = tradeDetails;
 
       // Mock validate to return errors
-      const mockValidationErrors = [{ property: 'price', constraints: { isNotEmpty: 'price should not be empty' } }];
+      const mockValidationErrors = [
+        {property: 'price', constraints: {isNotEmpty: 'price should not be empty'}},
+      ];
       (validate as jest.Mock).mockResolvedValue(mockValidationErrors); // Mock the validate function directly
 
       // Call the controller method
@@ -85,9 +97,8 @@ describe('TradeController', () => {
       expect(mockResponse.json).toHaveBeenCalledWith(mockValidationErrors);
     });
 
-
     it('should return 500 status if tradeService.createTrade throws an error', async () => {
-      const tradeDetails: CreateTradeDto = {
+      const tradeDetails = {
         symbol: 'AAPL',
         type: 'BUY',
         quantity: 10,
@@ -97,13 +108,11 @@ describe('TradeController', () => {
       const errorMessage = 'Failed to create trade';
 
       // Mock the service method to reject with an error
-      tradeService.createTrade.mockRejectedValue(new Error(errorMessage));
+      (validate as jest.Mock).mockResolvedValue([]);
+      (tradeService.createTrade as jest.Mock).mockRejectedValue(new Error(errorMessage));
 
       // Set the request body
       mockRequest.body = tradeDetails;
-
-      // Mock validate to return no errors
-      (validate as jest.Mock).mockResolvedValue([]);
 
       // Call the controller method
       await tradeController.createTrade(mockRequest as Request, mockResponse as Response);
@@ -111,7 +120,7 @@ describe('TradeController', () => {
       // Assertions
       expect(tradeService.createTrade).toHaveBeenCalledWith(tradeDetails);
       expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: errorMessage });
+      expect(mockResponse.json).toHaveBeenCalledWith({error: errorMessage});
     });
   });
 
@@ -132,7 +141,7 @@ describe('TradeController', () => {
       tradeService.getTradeById.mockResolvedValue(tradeDetails);
 
       // Set the request parameters
-      mockRequest.params = { id: tradeId };
+      mockRequest.params = {id: tradeId};
 
       // Call the controller method
       await tradeController.getTradeById(mockRequest as Request, mockResponse as Response);
@@ -150,7 +159,7 @@ describe('TradeController', () => {
       tradeService.getTradeById.mockResolvedValue(null);
 
       // Set the request parameters
-      mockRequest.params = { id: tradeId };
+      mockRequest.params = {id: tradeId};
 
       // Call the controller method
       await tradeController.getTradeById(mockRequest as Request, mockResponse as Response);
@@ -169,7 +178,7 @@ describe('TradeController', () => {
       tradeService.getTradeById.mockRejectedValue(new Error(errorMessage));
 
       // Set the request parameters
-      mockRequest.params = { id: tradeId };
+      mockRequest.params = {id: tradeId};
 
       // Call the controller method
       await tradeController.getTradeById(mockRequest as Request, mockResponse as Response);
@@ -177,25 +186,26 @@ describe('TradeController', () => {
       // Assertions
       expect(tradeService.getTradeById).toHaveBeenCalledWith(tradeId);
       expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: errorMessage });
+      expect(mockResponse.json).toHaveBeenCalledWith({error: errorMessage});
     });
   });
 
   describe('getTradeHistory', () => {
     it('should call tradeService.getTradeHistory and return 200 status with trade history', async () => {
       const tradeHistory = [
-        { id: '1', symbol: 'AAPL', type: 'BUY', quantity: 10, price: 150, orderType: 'MARKET' },
-        { id: '2', symbol: 'GOOG', type: 'SELL', quantity: 5, price: 2500, orderType: 'LIMIT' },
+        {id: '1', symbol: 'AAPL', type: 'BUY', quantity: 10, price: 150, orderType: 'MARKET'},
+        {id: '2', symbol: 'GOOG', type: 'SELL', quantity: 5, price: 2500, orderType: 'LIMIT'},
       ];
 
       // Mock the service method to resolve with trade history
-      tradeService.getTradeHistory.mockResolvedValue(tradeHistory);
+      (tradeService.getTradeHistory as jest.Mock).mockResolvedValue(tradeHistory);
+      mockRequest.query = {userId: 'test-user'};
 
       // Call the controller method
       await tradeController.getTradeHistory(mockRequest as Request, mockResponse as Response);
 
       // Assertions
-      expect(tradeService.getTradeHistory).toHaveBeenCalled();
+      expect(tradeService.getTradeHistory).toHaveBeenCalledWith('test-user');
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith(tradeHistory);
     });
@@ -204,15 +214,16 @@ describe('TradeController', () => {
       const errorMessage = 'Failed to retrieve trade history';
 
       // Mock the service method to reject with an error
-      tradeService.getTradeHistory.mockRejectedValue(new Error(errorMessage));
+      (tradeService.getTradeHistory as jest.Mock).mockRejectedValue(new Error(errorMessage));
+      mockRequest.query = {userId: 'test-user'};
 
       // Call the controller method
       await tradeController.getTradeHistory(mockRequest as Request, mockResponse as Response);
 
       // Assertions
-      expect(tradeService.getTradeHistory).toHaveBeenCalled();
+      expect(tradeService.getTradeHistory).toHaveBeenCalledWith('test-user');
       expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: errorMessage });
+      expect(mockResponse.json).toHaveBeenCalledWith({error: errorMessage});
     });
   });
 });

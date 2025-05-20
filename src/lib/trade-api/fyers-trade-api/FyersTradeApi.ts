@@ -1,110 +1,121 @@
-import { ITradeApi, Order, OrderResult } from '../ITradeApi';
-import { FyersAPI } from 'fyers-api-v2';
+import axios, {AxiosRequestConfig} from 'axios';
+import {ITradeApi, Order, OrderResponse} from '../ITradeApi';
+import {
+  FyersOrderPayload,
+  FyersOrderResponse,
+  FyersBalanceResponse,
+  FyersQuotesResponse,
+  FyersOrderStatusResponse,
+  FyersCancelOrderResponse,
+  FyersTrade,
+  FyersTradeHistoryResponse,
+} from './fyers.types';
 
 export class FyersTradeApi implements ITradeApi {
-  private fyers: FyersAPI;
+  private apiKey: string;
   private accessToken: string;
+  private axiosInstance: typeof axios;
 
-  constructor() {
-    const clientId = process.env.FYERS_CLIENT_ID;
-    const secretKey = process.env.FYERS_SECRET_KEY;
-    const redirectUri = process.env.FYERS_REDIRECT_URI;
-    const state = process.env.FYERS_STATE;
-    this.accessToken = process.env.FYERS_ACCESS_TOKEN || ''; // Assuming access token is obtained separately
+  constructor(apiKey: string, accessToken: string) {
+    this.apiKey = apiKey;
+    this.accessToken = accessToken;
+    this.axiosInstance = axios;
+  }
 
-    if (!clientId || !secretKey || !redirectUri || !state || !this.accessToken) {
-      throw new Error('Fyers API credentials or access token not provided in environment variables.');
-    }
+  private async request<T = unknown>(config: AxiosRequestConfig): Promise<T> {
+    // Add auth headers if not present
+    config.headers = {
+      Authorization: `Bearer ${this.apiKey}:${this.accessToken}`,
+      'Content-Type': 'application/json',
+      ...(config.headers || {}),
+    };
+    const response = await this.axiosInstance.request<T>(config);
+    return response.data;
+  }
 
-    this.fyers = new FyersAPI();
-    this.fyers.setClientValues({
-      client_id: clientId,
-      secret_key: secretKey,
-      redirect_uri: redirectUri,
-      state: state,
+  async placeOrder(orderPayload: FyersOrderPayload): Promise<FyersOrderResponse> {
+    const data = await this.request<FyersOrderResponse>({
+      method: 'POST',
+      url: '/orders',
+      data: orderPayload,
     });
-    this.fyers.setAccessToken(this.accessToken);
-  }
-
-  async placeOrder(orderDetails: Order): Promise<OrderResult> {
-    try {
-      const orderPayload = {
-        symbol: orderDetails.symbol,
-        qty: orderDetails.quantity,
-        type: orderDetails.type, // Market, Limit, etc.
-        side: orderDetails.side, // 1 for buy, -1 for sell
-        productType: orderDetails.productType, // CNC, MIS, NRML
-        limitPrice: orderDetails.limitPrice,
-        stopPrice: orderDetails.stopPrice,
-        validity: orderDetails.validity, // DAY, IOC, GTT
-        disclosedQty: orderDetails.disclosedQuantity,
-        offlineOrder: orderDetails.offlineOrder ? 1 : 0,
-        // Add other necessary Fyers specific order parameters
-      };
-
-      const response = await this.fyers.place_order(orderPayload);
-
-      if (response && response.s === 'ok') {
-        return {
-          orderId: response.id,
-          status: 'success',
-          message: response.message,
-        };
-      } else {
-        return {
-          orderId: null,
-          status: 'failed',
-          message: response ? response.message : 'Unknown error',
-        };
-      }
-    } catch (error: any) {
-      return {
-        orderId: null,
-        status: 'failed',
-        message: error.message,
-      };
+    if (data.s === 'ok') {
+      return data;
+    } else {
+      throw new Error(`Fyers API Error: ${data.message} (Code: ${data.code})`);
     }
   }
 
-  async getOrderStatus(orderId: string): Promise<any> {
-    try {
-      const response = await this.fyers.orderbook(); // This gets all orders, you might need to filter by orderId
-      if (response && response.s === 'ok' && response.orderBook) {
-        const order = response.orderBook.find((o: any) => o.id === orderId);
-        return order;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error fetching order status:', error);
-      return null;
+  async getBalances(): Promise<FyersBalanceResponse> {
+    const data = await this.request<FyersBalanceResponse>({
+      method: 'GET',
+      url: '/funds',
+    });
+    if (data.s === 'ok') {
+      return data;
+    } else {
+      throw new Error(`Fyers API Error: ${data.message} (Code: ${data.code})`);
     }
   }
 
-  async getTradeBook(): Promise<any> {
-    try {
-      const response = await this.fyers.tradebook();
-      if (response && response.s === 'ok' && response.tradeBook) {
-        return response.tradeBook;
-      }
-      return [];
-    } catch (error) {
-      console.error('Error fetching trade book:', error);
-      return [];
+  async getQuotes(symbols: string[]): Promise<FyersQuotesResponse> {
+    const data = await this.request<FyersQuotesResponse>({
+      method: 'GET',
+      url: `/quotes?symbols=${symbols.join(',')}`,
+    });
+    if (data.s === 'ok') {
+      return data;
+    } else {
+      throw new Error(`Fyers API Error: ${data.message} (Code: ${data.code})`);
     }
   }
 
-    async getUserBalance(userId: string): Promise<number> {
-    try {
-      const response = await this.fyers.funds();
-      if (response && response.s === 'ok' && response.fund_limit) {
-        // Assuming the available balance is in a field like 'cash' or 'available_balance'
-        return response.fund_limit[0].cash;
-      }
-      return 0; // Default to 0 if balance not found or API error
-    } catch (error) {
-      console.error('Error fetching user balance:', error);
-      return 0;
+  // Stub implementations for interface completeness
+  async getTrades(accountId: string): Promise<FyersTrade[]> {
+    // Fyers trade history endpoint: /tradebook (GET)
+    const data = await this.request<FyersTradeHistoryResponse>({
+      method: 'GET',
+      url: '/tradebook',
+    });
+    if (data.s === 'ok' && data.trades) {
+      return data.trades;
+    } else {
+      throw new Error(`Fyers API Error: ${data.message} (Code: ${data.code})`);
     }
   }
-  // Add other methods as needed for Fyers API interactions (e.g., getting quotes, positions)
+  async cancelOrder(orderId: string): Promise<FyersCancelOrderResponse> {
+    // Fyers cancel order endpoint: /orders/{orderId} with DELETE method
+    const data = await this.request<FyersCancelOrderResponse>({
+      method: 'DELETE',
+      url: `/orders/${orderId}`,
+    });
+    if (data.s === 'ok') {
+      return data;
+    } else {
+      throw new Error(`Fyers API Error: ${data.message} (Code: ${data.code})`);
+    }
+  }
+  async getOrderStatus(orderId: string): Promise<FyersOrderStatusResponse> {
+    // Fyers order status endpoint: /orders/{orderId}
+    const data = await this.request<FyersOrderStatusResponse>({
+      method: 'GET',
+      url: `/orders/${orderId}`,
+    });
+    if (data.s === 'ok') {
+      return data;
+    } else {
+      throw new Error(`Fyers API Error: ${data.message} (Code: ${data.code})`);
+    }
+  }
+  async getUserBalance(userId: string): Promise<number> {
+    // Fyers API does not use userId in the endpoint, so we ignore it
+    const data = await this.getBalances();
+    if (data.s === 'ok' && data.fund_limit && data.fund_limit.length > 0) {
+      // Return the equity balance (total) from the first fund_limit entry
+      const equity = data.fund_limit[0].equityAmount ?? 0;
+      return equity;
+    } else {
+      throw new Error('Unable to fetch user balance');
+    }
+  }
 }

@@ -10,7 +10,8 @@
     "clean": "rm -rf dist",
     "offline": "serverless offline",
     "start": "npm run build && npm run offline",
-    "deploy": "npm run build && serverless deploy"
+    "deploy": "npm run build && serverless deploy",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@prisma/client": "^6.7.0",

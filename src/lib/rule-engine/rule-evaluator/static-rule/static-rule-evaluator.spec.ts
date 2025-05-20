@@ -1,4 +1,4 @@
-import { StaticRuleEvaluator } from './static-rule-evaluator';
+import {StaticRuleEvaluator} from './static-rule-evaluator';
 
 describe('StaticRuleEvaluator', () => {
   describe('evaluate', () => {
@@ -8,7 +8,7 @@ describe('StaticRuleEvaluator', () => {
         'Price greater than 100',
         'context.price > 100'
       );
-      const context = { price: 150 };
+      const context = {price: 150};
 
       const result = await staticRuleEvaluator.evaluate(context);
       expect(result).toBe(true);
@@ -20,7 +20,7 @@ describe('StaticRuleEvaluator', () => {
         'Price less than 100',
         'context.price < 100'
       );
-      const context = { price: 50 };
+      const context = {price: 50};
 
       const result = await staticRuleEvaluator.evaluate(context);
       expect(result).toBe(true);
@@ -32,7 +32,7 @@ describe('StaticRuleEvaluator', () => {
         'Price equal to 100',
         'context.price == 100'
       );
-      const context = { price: 100 };
+      const context = {price: 100};
 
       const result = await staticRuleEvaluator.evaluate(context);
       expect(result).toBe(true);
@@ -44,7 +44,7 @@ describe('StaticRuleEvaluator', () => {
         'Price greater than 100',
         'context.price > 100'
       );
-      const context = { price: 50 };
+      const context = {price: 50};
 
       const result = await staticRuleEvaluator.evaluate(context);
       expect(result).toBe(false);
@@ -56,7 +56,7 @@ describe('StaticRuleEvaluator', () => {
         'Symbol is AAPL',
         'context.symbol == "AAPL"'
       );
-      const context = { symbol: 'AAPL' };
+      const context = {symbol: 'AAPL'};
 
       const result = await staticRuleEvaluator.evaluate(context);
       expect(result).toBe(true);
@@ -69,14 +69,7 @@ describe('StaticRuleEvaluator', () => {
         'context.price > 100'
       );
       const context = {}; // Missing 'price'
-
-      try {
-        await staticRuleEvaluator.evaluate(context);
-        // If it didn't throw, it failed
-        fail('Expected an error to be thrown');
-      } catch (error) {
-        expect(error.message).toEqual('context is required.');
-      }
+      await expect(staticRuleEvaluator.evaluate(context)).rejects.toThrow('context is required.');
     });
   });
 });

@@ -1,8 +1,9 @@
-import { UserRepository } from '../user/user.repository';
-import { Rule } from '../../lib/rule-engine/types'; // Updated import path
+import {UserRepository} from '../user/user.repository';
+import {Rule} from '../../lib/rule-engine/types/Rule'; // Updated import path
 
-export class RuleCacheService { // Changed class name to RuleCacheService
-  private symbolRuleUserMap: Map<string, { userId: string; rule: Rule }[]> = new Map();
+export class RuleCacheService {
+  // Changed class name to RuleCacheService
+  private symbolRuleUserMap: Map<string, {userId: string; rule: Rule}[]> = new Map();
 
   private userRepository: UserRepository;
 
@@ -28,38 +29,33 @@ export class RuleCacheService { // Changed class name to RuleCacheService
               if (!this.symbolRuleUserMap.has(relevantSymbol)) {
                 this.symbolRuleUserMap.set(relevantSymbol, []);
               }
-              this.symbolRuleUserMap.get(relevantSymbol)?.push({ userId: String(user.id), rule });
+              this.symbolRuleUserMap.get(relevantSymbol)?.push({userId: String(user.id), rule});
             }
           }
         }
-          }
-    } catch(error){
-        console.log(error);
       }
-    }
-
-
-  // Placeholder method to extract symbol from a rule
-  // You'll need to implement this based on your Rule model structure
-  private extractSymbolFromRule(rule: Rule): string | undefined {
-    // Example: Assuming rule.condition is a JSON object and has a 'symbol' field
-      try {
-          const condition = typeof rule.condition === 'string' ? JSON.parse(rule.condition) : rule.condition;
-          if (rule.type === 'static') {
-              // Ensure condition and condition.symbol exist
-              return condition?.symbol;
-          }else{
-              // Return undefined or handle other rule types as needed
-              return undefined;
-        }
     } catch (error) {
-      console.error('Error extracting symbol from rule condition:', error);
-      return undefined;
+      console.log(error);
     }
   }
 
+  // Placeholder method to extract symbol from a rule
+  // Updated: Extract symbol from StaticRuleEvaluator expression if possible
+  private extractSymbolFromRule(rule: Rule): string | undefined {
+    if (rule.conditions && rule.conditions.length > 0) {
+      const first = rule.conditions[0];
+      if (first.type === 'static' && first instanceof Object && 'expression' in first) {
+        // Try to extract symbol from expression like "context.symbol === 'AAPL'"
+        const match = (first as any).expression.match(
+          /context\.symbol\s*===\s*['"]([A-Z0-9]+)['"]/
+        );
+        if (match) return match[1];
+      }
+    }
+    return undefined;
+  }
 
-  getRulesAndUsersForSymbol(symbol: string): { userId: string; rule: Rule }[] | undefined {
+  getRulesAndUsersForSymbol(symbol: string): {userId: string; rule: Rule}[] | undefined {
     return this.symbolRuleUserMap.get(symbol);
   }
 
@@ -73,33 +69,35 @@ export class RuleCacheService { // Changed class name to RuleCacheService
       if (!this.symbolRuleUserMap.has(symbol)) {
         this.symbolRuleUserMap.set(symbol, []);
       }
-      this.symbolRuleUserMap.get(symbol)?.push({ userId, rule });
+      this.symbolRuleUserMap.get(symbol)?.push({userId, rule});
     }
   }
 
   async updateRule(userId: string, rule: Rule): Promise<void> {
-    const oldSymbol:string|undefined = this.getOldSymbol(userId, rule);
-    
+    const oldSymbol: string | undefined = this.getOldSymbol(userId, rule);
+
     const newSymbol = this.extractSymbolFromRule(rule);
 
     if (oldSymbol && oldSymbol !== newSymbol) {
       // Remove from old symbol's list
-      await this.deleteRule(userId, rule.id)
+      await this.deleteRule(userId, rule.id);
       // Add to new symbol's list
       await this.addRule(userId, rule);
-    } else if(oldSymbol){
+    } else if (oldSymbol) {
       // Update rule in existing list
-      const symbol=oldSymbol;
+      const symbol = oldSymbol;
       const rulesForSymbol = this.symbolRuleUserMap.get(symbol);
       if (rulesForSymbol) {
-        const ruleIndex = rulesForSymbol.findIndex(item => item.userId === userId && item.rule.id === rule.id);
+        const ruleIndex = rulesForSymbol.findIndex(
+          item => item.userId === userId && item.rule.id === rule.id
+        );
         if (ruleIndex !== -1) {
           rulesForSymbol[ruleIndex].rule = rule;
         }
       }
     }
   }
-  private getOldSymbol(userId:string,rule:Rule):string|undefined {
+  private getOldSymbol(userId: string, rule: Rule): string | undefined {
     for (const [symbol, userRules] of this.symbolRuleUserMap) {
       if (userRules.some(item => item.userId === userId && item.rule.id === rule.id)) {
         return symbol;
@@ -110,7 +108,9 @@ export class RuleCacheService { // Changed class name to RuleCacheService
 
   async deleteRule(userId: string, ruleId: string): Promise<void> {
     for (const [symbol, userRules] of this.symbolRuleUserMap) {
-      const ruleIndex = userRules.findIndex(item => item.userId === userId && item.rule.id === ruleId);
+      const ruleIndex = userRules.findIndex(
+        item => item.userId === userId && item.rule.id === ruleId
+      );
       if (ruleIndex !== -1) {
         userRules.splice(ruleIndex, 1);
         if (userRules.length === 0) {

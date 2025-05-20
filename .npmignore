@@ -1,0 +1,4 @@
+# Ignore generated Prisma client
+prisma/client/
+# Ignore coverage reports
+coverage/
