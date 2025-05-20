@@ -27,4 +27,16 @@ export class RuleController {
     await this.ruleCacheService.deleteRule(userId, ruleId);
     return {success: true};
   }
+
+  async getAllRules() {
+    return this.ruleService.getAllRules();
+  }
+
+  async getRuleById(id: string) {
+    return this.ruleService.getRuleById(id);
+  }
+
+  async getRulesByUser(userId: string) {
+    return this.ruleService.getRulesByUser(userId);
+  }
 }
