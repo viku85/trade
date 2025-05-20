@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import TradeService from './trade.service';
 import {TradeRepository} from '../../lib/data-access/trade.repository';
 

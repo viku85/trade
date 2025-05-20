@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import {Request, Response} from 'express';
 import {TradeController} from './trade.controller';
 import TradeService from './trade.service';

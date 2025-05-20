@@ -1,11 +1,11 @@
+import 'reflect-metadata';
+import {injectable} from 'tsyringe';
 import {Request, Response} from 'express';
 import {HealthService} from './health.service';
 
+@injectable()
 class HealthController {
-  private healthService: HealthService;
-  constructor(healthService: HealthService) {
-    this.healthService = healthService;
-  }
+  constructor(private healthService: HealthService) {}
 
   async checkHealth(req: Request, res: Response) {
     try {

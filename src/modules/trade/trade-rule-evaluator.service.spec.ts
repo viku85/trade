@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import {TradeRuleEvaluatorService} from './trade-rule-evaluator.service';
 import {RuleCacheService} from '../rule/rule-cache.service';
 import {RuleEngine} from '../../lib/rule-engine/rule-engine';

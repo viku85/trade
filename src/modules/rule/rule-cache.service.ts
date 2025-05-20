@@ -1,6 +1,8 @@
 import {UserRepository} from '../user/user.repository';
 import {Rule} from '../../lib/rule-engine/types/Rule'; // Updated import path
+import {singleton, injectable} from 'tsyringe';
 
+@injectable()
 export class RuleCacheService {
   // Changed class name to RuleCacheService
   private symbolRuleUserMap: Map<string, {userId: string; rule: Rule}[]> = new Map();

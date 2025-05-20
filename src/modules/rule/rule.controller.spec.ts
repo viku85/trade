@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import {RuleController} from './rule.controller';
 import {RuleService} from './rule.service';
 import {RuleCacheService} from './rule-cache.service';
@@ -28,17 +29,24 @@ describe('RuleController', () => {
 
   it('should create a rule and update the cache', async () => {
     const dto: CreateRuleDto = {description: 'desc', type: 'static', userId: 'u1'};
+    const ruleToCreate = {
+      ...dto,
+      conditions: [],
+      conditionOperator: 'AND',
+    };
     const createdRule = {
       id: '1',
       description: 'desc',
       type: 'static',
       userId: 'u1',
+      conditions: [],
+      conditionOperator: 'AND',
       evaluate: jest.fn(),
     };
     mockRuleService.createRule.mockResolvedValue(createdRule);
     mockRuleCacheService.addRule.mockResolvedValue(undefined);
     const result = await ruleController.createRule(dto);
-    expect(mockRuleService.createRule).toHaveBeenCalledWith(dto);
+    expect(mockRuleService.createRule).toHaveBeenCalledWith(ruleToCreate);
     expect(mockRuleCacheService.addRule).toHaveBeenCalledWith('u1', createdRule);
     expect(result).toBe(createdRule);
   });

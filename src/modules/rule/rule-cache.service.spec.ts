@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import {RuleCacheService} from './rule-cache.service';
 import {UserRepository} from '../user/user.repository';
 import {StaticRuleEvaluator} from '../../lib/rule-engine/rule-evaluator/static-rule/static-rule-evaluator';

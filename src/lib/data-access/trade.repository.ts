@@ -1,4 +1,5 @@
 import {PrismaClient, Purchase, RulePurchase, Sale} from '../../../prisma/prisma/client';
+import {singleton, injectable} from 'tsyringe';
 
 interface CreatePurchaseParams {
   amount: number;
@@ -18,8 +19,9 @@ interface CreateRulePurchaseParams {
   purchase: any;
 }
 
+@injectable()
 export class TradeRepository {
-  private prisma: PrismaClient;
+  private prisma: PrismaClient = new PrismaClient();
   constructor(prismaClient?: PrismaClient) {
     this.prisma = prismaClient || new PrismaClient();
   }

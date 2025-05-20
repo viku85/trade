@@ -1,14 +1,9 @@
 import {Router} from 'express';
+import {container} from 'tsyringe';
 import {RuleController} from './rule.controller';
-import {RuleService} from './rule.service';
-import {RuleCacheService} from './rule-cache.service';
-import {UserRepository} from '../user/user.repository';
 
 const router = Router();
-const ruleService = new RuleService();
-const userRepository = new UserRepository();
-const ruleCacheService = new RuleCacheService(userRepository);
-const controller = new RuleController(ruleService, ruleCacheService);
+const controller = container.resolve(RuleController);
 
 // POST /api/rules - Create a new trading rule
 router.post('/', async (req, res) => {

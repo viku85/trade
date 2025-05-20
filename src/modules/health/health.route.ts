@@ -1,9 +1,9 @@
 import {Router} from 'express';
+import {container} from 'tsyringe';
 import {HealthController} from './health.controller';
-import {HealthService} from './health.service';
 
 const router = Router();
-const healthController = new HealthController(new HealthService());
+const healthController = container.resolve(HealthController);
 
 router.get('/', (req, res) => healthController.checkHealth(req, res));
 

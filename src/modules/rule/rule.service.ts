@@ -1,4 +1,5 @@
 import {Rule} from '../../lib/rule-engine/types/Rule';
+import {singleton, injectable} from 'tsyringe';
 import {PrismaClient} from '@prisma/client';
 
 type JsonValue = any; // fallback for Prisma Json type
@@ -23,6 +24,7 @@ function mapPrismaRuleToRule(prismaRule: PrismaRule): Rule {
   };
 }
 
+@injectable()
 export class RuleService {
   private prisma = new PrismaClient();
 

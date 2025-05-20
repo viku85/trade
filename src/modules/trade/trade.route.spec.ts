@@ -1,3 +1,12 @@
+import 'reflect-metadata';
+jest.mock('tsyringe', () => ({
+  container: {
+    resolve: jest.fn(() => ({
+      getTrades: jest.fn((req, res) => res.status(200).json([[]])),
+    })),
+  },
+  injectable: () => (target: any) => target,
+}));
 import request from 'supertest';
 import express from 'express';
 import router from './trade.route';

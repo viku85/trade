@@ -1,6 +1,8 @@
+import {singleton, injectable} from 'tsyringe';
 import {TradeRepository} from '../../lib/data-access/trade.repository';
 import {ITradeApi, Order, OrderResponse} from '../../lib/trade-api/ITradeApi';
 
+@injectable()
 class TradeService {
   private tradeRepository: TradeRepository;
   private tradeApi: ITradeApi;

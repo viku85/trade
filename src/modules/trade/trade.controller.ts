@@ -1,12 +1,11 @@
+import {injectable} from 'tsyringe';
 import {Request, Response} from 'express';
 import TradeService from './trade.service';
 import {validate} from 'class-validator';
 
+@injectable()
 class TradeController {
-  private readonly service: TradeService;
-  constructor(tradeService: TradeService) {
-    this.service = tradeService;
-  }
+  constructor(private readonly service: TradeService) {}
 
   public async getTrades(req: Request, res: Response): Promise<void> {
     try {

@@ -5,7 +5,9 @@ import {Rule} from '../../lib/rule-engine/types';
 import {RuleCacheService} from '../rule/rule-cache.service';
 import TradeService from './trade.service';
 import {TradeRepository} from '../../lib/data-access/trade.repository';
+import {singleton, injectable} from 'tsyringe';
 
+@injectable()
 export class TradeRuleEvaluatorService {
   private ruleEngine: RuleEngine;
   private userRepository: UserRepository;

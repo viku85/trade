@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import {TradeRepository} from './trade.repository'; // Assuming TradeRepository is in this file
 import {PrismaClient} from '@prisma/client';
 

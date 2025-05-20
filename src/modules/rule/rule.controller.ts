@@ -1,7 +1,10 @@
+import {injectable} from 'tsyringe';
 import {RuleService} from './rule.service';
 import {RuleCacheService} from './rule-cache.service';
 import {CreateRuleDto, UpdateRuleDto} from './dto/rule.dto';
+import {Condition} from '../../lib/rule-engine/types';
 
+@injectable()
 export class RuleController {
   constructor(
     private readonly ruleService: RuleService,
@@ -9,7 +12,13 @@ export class RuleController {
   ) {}
 
   async createRule(createRuleDto: CreateRuleDto) {
-    const newRule = await this.ruleService.createRule(createRuleDto);
+    // Map DTO to Rule shape, provide defaults for missing fields
+    const ruleToCreate = {
+      ...createRuleDto,
+      conditions: [], // Default empty array, or map from DTO if available
+      conditionOperator: 'AND' as const, // Default, or map from DTO if available
+    };
+    const newRule = await this.ruleService.createRule(ruleToCreate);
     await this.ruleCacheService.addRule(newRule.userId, newRule);
     return newRule;
   }

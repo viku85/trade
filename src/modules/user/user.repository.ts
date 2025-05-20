@@ -1,5 +1,7 @@
 import {PrismaClient} from '@prisma/client';
+import {singleton, injectable} from 'tsyringe';
 
+@injectable()
 export class UserRepository {
   private prisma: PrismaClient;
 
